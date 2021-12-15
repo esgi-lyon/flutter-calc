@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:function_tree/function_tree.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,26 +12,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter calculator',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const CalculatorPage(title: 'Calculator page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+class CalculatorPage extends StatefulWidget {
+  const CalculatorPage({Key? key, required this.title}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -44,31 +36,77 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CalculatorPage> createState() => _CalculatorPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+enum Operator { add, deduct, quo, mul }
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+// TODO prefer hashmap
+extension OperatorExtension on Operator {
+  String? get processable {
+    return {
+      Operator.add: '+',
+      Operator.deduct: '-',
+      Operator.quo: '/',
+      Operator.mul: '*'
+    }[this];
+  }
+
+  StatelessWidget get icon {
+    return {
+          Operator.add: const Icon(Icons.add),
+          Operator.deduct: const Text("-"),
+          Operator.quo: const Icon(Icons.close),
+          Operator.mul: const Text("/")
+        }[this] ??
+        const Text("");
+  }
+}
+
+class _CalculatorPageState extends State<CalculatorPage> {
+  String? _operator;
+  String _expression = "";
+  num _result = 0;
+
+  VoidCallback _changeOperator(Operator toggledOperator) {
+    return () => setState(() {
+          _operator = toggledOperator.processable;
+        });
+  }
+
+  VoidCallback _addNbToExpr(int nb) {
+    return () => setState(() {
+          _expression += nb.toString();
+        });
+  }
+
+  VoidCallback _enclose(String parenthesis) {
+    return () => setState(() {
+          // TODO check id opening parenthesis or closing (regex)
+          _expression += parenthesis;
+        });
+  }
+
+  VoidCallback _finalize(String type) {
+    return () => setState(() {
+          if (type == "C") {
+            _expression = "";
+            _result = 0;
+          }
+
+          if (type == "=") {
+            _result = _expression.interpret();
+          }
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    var size = MediaQuery.of(context).size;
+    /*24 is for notification bar on Android*/
+    final double itemHeight = (size.height - kToolbarHeight - 24) / 4;
+    final double itemWidth = size.width / 2;
+
     return Scaffold(
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
@@ -78,38 +116,74 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+        child: Flex(
+          direction: Axis.vertical,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Flex(
+                direction: Axis.horizontal,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Row(children: <Widget>[
+                    const Text(
+                      'Expression : ',
+                    ),
+                    Text(
+                      _expression.toString(),
+                      style: Theme.of(context).textTheme.headline4,
+                    )
+                  ]),
+                  Row(children: <Widget>[
+                    const Text(
+                      'Result : ',
+                    ),
+                    Text(
+                      _result.toString(),
+                      style: Theme.of(context).textTheme.headline4,
+                    ),
+                  ])
+                ]),
+            Expanded(
+                child: GridView.count(
+                    // Create a grid with 2 columns. If you change the scrollDirection to
+                    // horizontal, this produces 2 rows.
+                    crossAxisCount: 3,
+                    childAspectRatio: (itemWidth / itemHeight),
+                    children: [
+                  ...List.generate(9, (index) {
+                    return Center(
+                      child: TextButton(
+                          onPressed: _addNbToExpr(index),
+                          child: Text(
+                            '$index',
+                            style: Theme.of(context).textTheme.headline5,
+                          )),
+                    );
+                  }),
+                  ...["(", ")"].map((e) => Center(
+                      child: TextButton(
+                          onPressed: _enclose(e),
+                          child: Text(e,
+                              style: Theme.of(context).textTheme.headline5)))),
+                ])),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                verticalDirection: VerticalDirection.up,
+                children: <Widget>[
+                  ...Operator.values.map((e) => TextButton(
+                        onPressed: _changeOperator(e),
+                        child: e.icon,
+                      )),
+                  ...["C", "="].map((e) => Center(
+                      child: TextButton(
+                          onPressed: _finalize(e),
+                          child: Text(e,
+                              style: Theme.of(context).textTheme.headline5))))
+                ])
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+// This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
