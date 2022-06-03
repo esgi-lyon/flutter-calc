@@ -56,8 +56,8 @@ extension OperatorExtension on Operator {
     return {
           Operator.add: const Icon(Icons.add),
           Operator.deduct: const Text("-"),
-          Operator.quo: const Icon(Icons.close),
-          Operator.mul: const Text("/")
+          Operator.quo: const Text("/"),
+          Operator.mul: const Icon(Icons.close)
         }[this] ??
         const Text("");
   }
@@ -76,14 +76,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   VoidCallback _addNbToExpr(int nb) {
     return () => setState(() {
+          if (nb.toString() != "") {
+            _expression += _operator ?? "";
+          }
+
           _expression += nb.toString();
+          if (_operator != null) {
+            _operator = null;
+          }
         });
   }
 
   VoidCallback _enclose(String parenthesis) {
     return () => setState(() {
           // TODO check id opening parenthesis or closing (regex)
+          _expression += _operator ?? "";
           _expression += parenthesis;
+          if (_operator != null) {
+            _operator = null;
+          }
         });
   }
 
@@ -104,7 +115,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
     /*24 is for notification bar on Android*/
-    final double itemHeight = (size.height - kToolbarHeight - 24) / 4;
+    final double itemHeight = (size.height - kToolbarHeight - 24) / 6;
     final double itemWidth = size.width / 2;
 
     return Scaffold(
@@ -117,71 +128,84 @@ class _CalculatorPageState extends State<CalculatorPage> {
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
         child: Flex(
-          direction: Axis.vertical,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Flex(
-                direction: Axis.horizontal,
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Row(children: <Widget>[
-                    const Text(
-                      'Expression : ',
-                    ),
-                    Text(
-                      _expression.toString(),
-                      style: Theme.of(context).textTheme.headline4,
-                    )
+            direction: Axis.vertical,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Flex(
+                  direction: Axis.horizontal,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Row(children: <Widget>[
+                      const Text(
+                        'Expression : ',
+                      ),
+                      Text(
+                        _expression.toString(),
+                        style: Theme.of(context).textTheme.headline4,
+                      )
+                    ]),
+                    Row(children: <Widget>[
+                      const Text(
+                        'Result : ',
+                      ),
+                      Text(
+                        _result.toString(),
+                        style: Theme.of(context).textTheme.headline4,
+                      ),
+                    ])
                   ]),
-                  Row(children: <Widget>[
-                    const Text(
-                      'Result : ',
-                    ),
-                    Text(
-                      _result.toString(),
-                      style: Theme.of(context).textTheme.headline4,
-                    ),
-                  ])
-                ]),
-            Expanded(
-                child: GridView.count(
-                    // Create a grid with 2 columns. If you change the scrollDirection to
-                    // horizontal, this produces 2 rows.
-                    crossAxisCount: 3,
-                    childAspectRatio: (itemWidth / itemHeight),
-                    children: [
-                  ...List.generate(9, (index) {
-                    return Center(
-                      child: TextButton(
-                          onPressed: _addNbToExpr(index),
-                          child: Text(
-                            '$index',
-                            style: Theme.of(context).textTheme.headline5,
-                          )),
-                    );
-                  }),
-                  ...["(", ")"].map((e) => Center(
-                      child: TextButton(
-                          onPressed: _enclose(e),
-                          child: Text(e,
-                              style: Theme.of(context).textTheme.headline5)))),
-                ])),
-            Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                verticalDirection: VerticalDirection.up,
-                children: <Widget>[
-                  ...Operator.values.map((e) => TextButton(
-                        onPressed: _changeOperator(e),
-                        child: e.icon,
-                      )),
-                  ...["C", "="].map((e) => Center(
-                      child: TextButton(
-                          onPressed: _finalize(e),
-                          child: Text(e,
-                              style: Theme.of(context).textTheme.headline5))))
-                ])
-          ],
-        ),
+              Expanded(
+                  child: GridView.count(
+                      // Create a grid with 2 columns. If you change the scrollDirection to
+                      // horizontal, this produces 2 rows.
+                      crossAxisCount: 3,
+                      childAspectRatio: (itemWidth / itemHeight),
+                      children: [
+                    ...List.generate(9, (index) {
+                      return Center(
+                        child: TextButton(
+                            onPressed: _addNbToExpr(index),
+                            child: Text(
+                              '$index',
+                              style: Theme.of(context).textTheme.headline5,
+                            )),
+                      );
+                    }),
+                    ...["(", ")"].map((e) => Center(
+                        child: TextButton(
+                            onPressed: _enclose(e),
+                            child: Text(e,
+                                style:
+                                    Theme.of(context).textTheme.headline5)))),
+                  ])),
+              Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      verticalDirection: VerticalDirection.up,
+                      children: [
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          ...Operator.values.map((e) => TextButton(
+                                onPressed: _changeOperator(e),
+                                child: e.icon,
+                              ))
+                        ]),
+                    Padding(
+                        padding: const EdgeInsets.all(30),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              ...["C", "="].map((e) => Center(
+                                  child: TextButton(
+                                      onPressed: _finalize(e),
+                                      child: Text(e,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headline5))))
+                            ]))
+                  ])),
+            ]),
       ),
 // This trailing comma makes auto-formatting nicer for build methods.
     );
